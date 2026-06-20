@@ -18,8 +18,8 @@ Bölümler öğrenme sırasına göre numaralandırılmıştır. Her klasörün 
 ## Kurulum
 
 ```bash
-git clone https://github.com/<kullanici-adi>/nlp-anatomy.git
-cd nlp-anatomy
+git clone https://github.com/berkayerol0/NLP.git
+cd NLP
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
