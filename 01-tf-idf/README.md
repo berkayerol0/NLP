@@ -1,38 +1,80 @@
-# 01 — TF-IDF Anatomisi: Temelden Limitlerine
+# Yorumdan Tavsiye Tahmini — TF-IDF + SVD
 
-TF-IDF'i sıfırdan ele alan, hem saf Python ile hem de `scikit-learn` ile uygulayan; ardından yöntemin gerçek dünyadaki sınırlarını (anlamsal körlük, kelime sırası kaybı, seyreklik, boyut laneti) somut örneklerle gösteren bölüm. Örnekler ağırlıklı olarak sistem/log verileri üzerinden kurgulanmıştır.
+Kadın giyim e-ticaret yorumlarından, müşterinin ürünü **tavsiye edip etmeyeceğini** (Recommended IND: 1/0) tahmin eden uçtan uca bir metin sınıflandırma projesi. Tek bir Python dosyasında; veriyi Kaggle'dan çeker, eksik değerleri temizler, keşifsel görseller üretir, TF-IDF + Logistic Regression ile model kurar ve **TF-IDF'i SVD (LSA) ile sıkıştırmanın** performansa etkisini ölçer.
 
-## İçerik
+> Veri seti: [Women's E-Commerce Clothing Reviews](https://www.kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews) (Kaggle, 23.486 yorum)
 
-Script adım adım ilerler:
+## Proje Hakkında
 
-1. **Kütüphanelerin yüklenmesi** – Gerekli importlar.
-2. **Temel Python uygulaması** – TF, IDF ve TF-IDF'in elle, kütüphanesiz hesaplanması.
-3. **Scikit-learn ile TF-IDF** – `TfidfVectorizer` ile aynı işin yapılması ve sonuçların `DataFrame` üzerinde gösterilmesi.
-4. **Görselleştirme** – TF-IDF matrisinin ısı haritası (heatmap).
-5. **TF-IDF'in limitleri ve sektörel analiz**
-   - 5.1 Anlamsal ilişki eksikliği (eş anlamlı kelimeler)
-   - 5.2 Bağlam ve kelime sırası problemi
-   - 5.3 Kısmi çözüm: N-Gram (Bigram) kullanımı
-   - 5.4 Boyutlanabilirlik ve seyreklik (sparsity)
-   - 5.5 Boyut laneti (curse of dimensionality)
-6. **Yoğun vektör (dense embedding) ile karşılaştırma** – TF-IDF → SVD ile boyut indirgeme.
-7. **Tüm limitlerin özeti ve çözüm yolları** – Hangi durumda TF-IDF, hangi durumda daha gelişmiş yöntemler.
+E-ticaret sitelerinde her gün binlerce yorum yazılıyor ama hepsini elle okumak mümkün değil. Bu proje, bir yorumun metnine bakarak **o ürünün tavsiye edilip edilmeyeceğini otomatik tahmin eden** bir model kuruyor — yani "bu yorumu okumadan, olumlu mu olumsuz mu olduğunu anlayabilir miyiz?" sorusuna cevap arıyor.
 
-> Bu bölümün 5. ve 7. kısımları, repodaki bir sonraki konu olan **kelime vektörlerine** (Word2Vec, GloVe, FastText) neden ihtiyaç duyulduğunu gösterir.
+Veri gerçek ve kirli (eksik yorumlar, mükerrer kayıtlar) olduğu için önce temizlik yapılıyor. Sonra metinler TF-IDF ile sayısala çevrilip bir sınıflandırıcıyla eğitiliyor. Son olarak, TF-IDF'in ürettiği binlerce boyutlu temsilin **SVD ile ne kadar küçültülebileceği**, doğruluktan ne kadar ödün vermek gerektiği ölçülüyor — yani sadece bir model değil, bir de "boyut indirgemenin maliyeti ne?" sorusunun cevabı var.
 
-## Çalıştırma
+## Neden TF-IDF?
 
-Dosya Google Colab'dan dışa aktarılmıştır ve `display()` gibi notebook fonksiyonları içerir, bu yüzden bir **Jupyter / Colab** ortamında çalıştırılması önerilir.
+Yorumlar kısa ve kelime seçimi sonucu büyük ölçüde belirliyor ("love", "perfect" vs. "cheap", "returned"). Bu tür bir problemde TF-IDF + lineer model hem güçlü bir temel (baseline) hem de hızlı ve **yorumlanabilir** bir çözümdür.
 
-Düz Python betiği olarak çalıştırmak isterseniz `display(...)` satırlarını `print(...)` ile değiştirmeniz yeterlidir:
+## Sonuçlar
+
+Temizlikten sonra 23.486 → **22.636** yorum kaldı (845 boş yorum, 5 mükerrer atıldı). Veri dengesiz: yorumların **%81.9'u** pozitif.
+
+| Model | Boyut | Accuracy | F1 (macro) |
+|-------|-------|----------|------------|
+| TF-IDF + Logistic Regression | 18.573 | **0.887** | **0.829** |
+| TF-IDF + SVD (300) + Logistic Regression | 300 | 0.868 | 0.809 |
+
+**Çıkarım:** SVD ile öznitelik uzayı 18.573 → 300 boyuta indirildiğinde (**%98 sıkışma**) doğruluk yalnızca ~2 puan düşüyor.
+
+## Görseller
+
+**Keşifsel analiz** — sınıf dengesizliği, ham veride eksik değerler, yorum uzunluğu dağılımı:
+
+![EDA](figures/01_eda.png)
+
+**En etkili kelimeler** — modelin kararını yönlendiren terimler (TF-IDF + lineer modelin yorumlanabilirliği):
+
+![Top words](figures/03_top_words.png)
+
+**SVD takası** — bileşen sayısı arttıkça doğruluk/F1 ve açıklanan varyans:
+
+![SVD](figures/04_svd_tradeoff.png)
+
+**Confusion matrix:**
+
+![Confusion Matrix](figures/02_confusion_matrix.png)
+
+## Kurulum ve Çalıştırma
 
 ```bash
-python tf_idf_anatomy.py
+git clone https://github.com/<kullanici-adi>/clothing-review-recommender.git
+cd clothing-review-recommender
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+python clothing_review_tfidf.py
 ```
 
-> Not: 5. bölüm 10.000 satırlık bir log havuzu simüle eder; bu adım ve grafik çizimleri birkaç saniye sürebilir.
+Script çalıştığında: veriyi Kaggle'dan indirir (yoksa), temizlik raporu + metrikleri yazdırır, `figures/` altına grafikleri ve `models/` altına eğitilmiş modeli kaydeder.
 
-## Gereksinimler
+> Veri setini indirme (Kaggle API kurulumu veya elle indirme): bkz. [`data/README.md`](data/README.md).
 
-Kök dizindeki `requirements.txt` bu bölüm için yeterlidir: `numpy`, `pandas`, `scikit-learn`, `scipy`, `matplotlib`, `seaborn`, `ipython`.
+## Akış (tek dosya: `clothing_review_tfidf.py`)
+
+1. **Kütüphaneler**
+2. **Veriyi Kaggle'dan çekme** (`kaggle` API; yoksa elle indirme yönergesi)
+3. **Temizlik** — gereksiz index sütunu, eksik yorum metni olan satırlar, mükerrerler
+4. **Keşifsel görselleştirme** — sınıf dağılımı, eksik değerler, yorum uzunluğu
+5. **TF-IDF** (İngilizce stop-word, 1–2 gram, `min_df=5`, `sublinear_tf`)
+6. **Logistic Regression** (`class_weight="balanced"` ile dengesizlik ele alınır)
+7. **Değerlendirme** — accuracy/precision/recall/F1, confusion matrix, en etkili kelimeler
+8. **SVD analizi** — farklı bileşen sayıları için boyut/performans takası
+9. **Örnek tahmin**
+
+## Olası Geliştirmeler
+
+Lemmatizasyon, farklı sınıflandırıcılarla (LinearSVC, Naive Bayes) karşılaştırma, hiperparametre araması (GridSearchCV), embedding tabanlı modellerle (Word2Vec, BERT) kıyas.
+
+## Lisans
+
+MIT
